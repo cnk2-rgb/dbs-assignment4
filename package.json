@@ -1,0 +1,14 @@
+{
+  "name": "dbs-assignment4",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace @grid-mood/web",
+    "dev:worker": "npm run dev --workspace @grid-mood/worker",
+    "build:web": "npm run build --workspace @grid-mood/web",
+    "lint:web": "npm run lint --workspace @grid-mood/web"
+  }
+}
