@@ -16,5 +16,5 @@ Grid Mood is a Week 4 multi-service system that turns WattTime grid signals into
 2. Copy `.env.example` to `.env.local` for the web app and `.env` for the worker context.
 3. Run `supabase/schema.sql` in the Supabase SQL editor.
 4. Seed at least one row in `locations`.
-5. Start the web app with `npm run dev:web`.
-6. Start the worker with `npm run dev:worker`.
+5. Start both services locally with `npm run dev`.
+6. Or, if you want to run them separately, use `npm run dev:web` and `npm run dev:worker`.

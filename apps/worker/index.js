@@ -6,6 +6,7 @@ const WATTTIME_LOGIN_URL = `${WATTTIME_API_BASE_URL}/login`;
 const WATTTIME_REGION_FROM_LOC_URL = `${WATTTIME_API_BASE_URL}/v3/region-from-loc`;
 const WATTTIME_SIGNAL_INDEX_URL = `${WATTTIME_API_BASE_URL}/v3/signal-index`;
 const WATTTIME_HISTORICAL_URL = `${WATTTIME_API_BASE_URL}/v3/historical`;
+const WATTTIME_MY_ACCESS_URL = `${WATTTIME_API_BASE_URL}/v3/my-access`;
 const WATTTIME_SIGNAL_TYPE = "co2_moer";
 const RECENT_HISTORICAL_WINDOW_MS = 15 * 60 * 1000;
 
@@ -129,6 +130,39 @@ async function fetchRecentMoer(token, region) {
       };
 }
 
+async function fetchAccessibleHistoricalRegions(token, signalType) {
+  const response = await fetch(WATTTIME_MY_ACCESS_URL, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `WattTime my-access failed with status ${response.status}`
+    );
+  }
+
+  const body = await response.json();
+  const signal = body.signal_types?.find(
+    (entry) => entry.signal_type === signalType
+  );
+
+  if (!signal) {
+    return new Set();
+  }
+
+  return new Set(
+    (signal.regions ?? [])
+      .filter((region) =>
+        (region.endpoints ?? []).some(
+          (endpoint) => endpoint.endpoint === "v3/historical"
+        )
+      )
+      .map((region) => region.region)
+  );
+}
+
 function deriveMoodLevel(emissionsPercentile) {
   if (emissionsPercentile === null || Number.isNaN(emissionsPercentile)) {
     return "unknown";
@@ -171,11 +205,14 @@ async function fetchLocations(supabase) {
   return data ?? [];
 }
 
-async function fetchWattTimeSignals(token, location) {
+async function fetchWattTimeSignals(token, location, accessibleHistoricalRegions) {
   const region = await fetchBalancingAuthority(token, location);
+  const recentMoerPromise = accessibleHistoricalRegions.has(region.region)
+    ? fetchRecentMoer(token, region.region)
+    : Promise.resolve(null);
   const [signalIndex, recentMoer] = await Promise.all([
     fetchSignalIndex(token, region.region),
-    fetchRecentMoer(token, region.region)
+    recentMoerPromise
   ]);
   const currentIndexPoint = signalIndex.data?.[0] ?? null;
   const emissionsPercentile =
@@ -219,10 +256,18 @@ async function upsertCurrentGridState(supabase, locationId, signals) {
 async function pollOnce() {
   const supabase = createSupabase();
   const token = await loginToWattTime();
+  const accessibleHistoricalRegions = await fetchAccessibleHistoricalRegions(
+    token,
+    WATTTIME_SIGNAL_TYPE
+  );
   const locations = await fetchLocations(supabase);
 
   for (const location of locations) {
-    const signals = await fetchWattTimeSignals(token, location);
+    const signals = await fetchWattTimeSignals(
+      token,
+      location,
+      accessibleHistoricalRegions
+    );
     await upsertCurrentGridState(supabase, location.id, signals);
     console.log(`Updated grid state for ${location.name}`);
   }

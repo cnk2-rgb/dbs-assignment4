@@ -6,9 +6,16 @@
     "apps/*"
   ],
   "scripts": {
-    "dev:web": "npm run dev --workspace @grid-mood/web",
-    "dev:worker": "npm run dev --workspace @grid-mood/worker",
-    "build:web": "npm run build --workspace @grid-mood/web",
-    "lint:web": "npm run lint --workspace @grid-mood/web"
+    "dev": "concurrently -n web,worker -c blue,green \"npm run dev:web\" \"npm run dev:worker\"",
+    "dev:web": "dotenv -e .env -- npm run dev --workspace @grid-mood/web",
+    "dev:worker": "dotenv -e .env -- npm run dev --workspace @grid-mood/worker",
+    "build:web": "dotenv -e .env -- npm run build --workspace @grid-mood/web",
+    "lint:web": "npm run lint --workspace @grid-mood/web",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "concurrently": "^9.2.1",
+    "dotenv-cli": "^11.0.0"
   }
 }
