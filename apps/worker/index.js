@@ -1,9 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 
 const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS ?? 60000);
-const WATTTIME_LOGIN_URL = "https://api2.watttime.org/v2/login";
-const WATTTIME_BA_FROM_LOC_URL = "https://api2.watttime.org/v2/ba-from-loc";
-const WATTTIME_INDEX_URL = "https://api2.watttime.org/v2/index";
+const WATTTIME_API_BASE_URL = "https://api.watttime.org";
+const WATTTIME_LOGIN_URL = `${WATTTIME_API_BASE_URL}/login`;
+const WATTTIME_REGION_FROM_LOC_URL = `${WATTTIME_API_BASE_URL}/v3/region-from-loc`;
+const WATTTIME_SIGNAL_INDEX_URL = `${WATTTIME_API_BASE_URL}/v3/signal-index`;
+const WATTTIME_HISTORICAL_URL = `${WATTTIME_API_BASE_URL}/v3/historical`;
+const WATTTIME_SIGNAL_TYPE = "co2_moer";
+const RECENT_HISTORICAL_WINDOW_MS = 15 * 60 * 1000;
 
 function assertEnv(name) {
   const value = process.env[name];
@@ -49,43 +53,80 @@ async function loginToWattTime() {
 }
 
 async function fetchBalancingAuthority(token, location) {
-  const response = await fetch(
-    `${WATTTIME_BA_FROM_LOC_URL}?latitude=${location.latitude}&longitude=${location.longitude}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+  const params = new URLSearchParams({
+    latitude: String(location.latitude),
+    longitude: String(location.longitude),
+    signal_type: WATTTIME_SIGNAL_TYPE
+  });
+  const response = await fetch(`${WATTTIME_REGION_FROM_LOC_URL}?${params}`, {
+    headers: {
+      Authorization: `Bearer ${token}`
     }
-  );
+  });
 
   if (!response.ok) {
     throw new Error(
-      `WattTime ba-from-loc failed for ${location.name} with status ${response.status}`
+      `WattTime region-from-loc failed for ${location.name} with status ${response.status}`
     );
   }
 
   return response.json();
 }
 
-async function fetchRealtimeIndex(token, balancingAuthority) {
-  const response = await fetch(
-    `${WATTTIME_INDEX_URL}?ba=${encodeURIComponent(
-      balancingAuthority
-    )}&style=all`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+async function fetchSignalIndex(token, region) {
+  const params = new URLSearchParams({
+    region,
+    signal_type: WATTTIME_SIGNAL_TYPE
+  });
+  const response = await fetch(`${WATTTIME_SIGNAL_INDEX_URL}?${params}`, {
+    headers: {
+      Authorization: `Bearer ${token}`
     }
-  );
+  });
 
   if (!response.ok) {
     throw new Error(
-      `WattTime index failed for ${balancingAuthority} with status ${response.status}`
+      `WattTime signal-index failed for ${region} with status ${response.status}`
     );
   }
 
   return response.json();
+}
+
+async function fetchRecentMoer(token, region) {
+  const end = new Date();
+  const start = new Date(end.getTime() - RECENT_HISTORICAL_WINDOW_MS);
+  const params = new URLSearchParams({
+    region,
+    signal_type: WATTTIME_SIGNAL_TYPE,
+    start: start.toISOString(),
+    end: end.toISOString()
+  });
+  const response = await fetch(`${WATTTIME_HISTORICAL_URL}?${params}`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  if (response.status === 403) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      `WattTime historical failed for ${region} with status ${response.status}`
+    );
+  }
+
+  const body = await response.json();
+  const latestPoint = body.data?.at(-1);
+
+  return latestPoint?.value === undefined || latestPoint?.value === null
+    ? null
+    : {
+        point_time: latestPoint.point_time ?? null,
+        value: Number(latestPoint.value)
+      };
 }
 
 function deriveMoodLevel(emissionsPercentile) {
@@ -132,21 +173,26 @@ async function fetchLocations(supabase) {
 
 async function fetchWattTimeSignals(token, location) {
   const region = await fetchBalancingAuthority(token, location);
-  const index = await fetchRealtimeIndex(token, region.abbrev);
+  const [signalIndex, recentMoer] = await Promise.all([
+    fetchSignalIndex(token, region.region),
+    fetchRecentMoer(token, region.region)
+  ]);
+  const currentIndexPoint = signalIndex.data?.[0] ?? null;
   const emissionsPercentile =
-    index.percent === undefined || index.percent === null
+    currentIndexPoint?.value === undefined || currentIndexPoint?.value === null
       ? null
-      : Number(index.percent);
-  const co2Moer =
-    index.moer === undefined || index.moer === null ? null : Number(index.moer);
+      : Number(currentIndexPoint.value);
   const moodLevel = deriveMoodLevel(emissionsPercentile);
 
   return {
-    captured_at: index.point_time ?? new Date().toISOString(),
-    region_name: region.name ?? null,
-    region_abbrev: region.abbrev ?? null,
+    captured_at:
+      currentIndexPoint?.point_time ??
+      recentMoer?.point_time ??
+      new Date().toISOString(),
+    region_name: region.region_full_name ?? null,
+    region_abbrev: region.region ?? null,
     emissions_percentile: emissionsPercentile,
-    co2_moer: co2Moer,
+    co2_moer: recentMoer?.value ?? null,
     co2_aoer: null,
     health_damage: null,
     mood_level: moodLevel,
