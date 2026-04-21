@@ -19,6 +19,9 @@ test.describe("Grid Mood", () => {
     const regionCard = page
       .locator("article")
       .filter({ has: page.getByText("Region", { exact: true }) });
+    const scenePanel = page
+      .locator("section")
+      .filter({ has: page.getByText(/Palette:/) });
 
     await expect(page.getByRole("button", { name: "Chicago, IL" })).toBeVisible({
       timeout: 20000
@@ -27,13 +30,16 @@ test.describe("Grid Mood", () => {
       timeout: 20000
     });
     await expect(page.getByText(/Palette:/)).toContainText(/Palette: (ember-pressure|mineral-morning|amber-current|dawn-waiting)/);
-    await expect(page.getByText(/Updated:/)).not.toContainText("pending");
+    await expect(scenePanel.getByText(/Last updated:/).first()).not.toContainText("pending");
   });
 
   test("shows the live data tab with source fields and timestamps", async ({
     page
   }) => {
     await page.goto("/");
+    const dataPanel = page
+      .locator("section")
+      .filter({ has: page.getByRole("heading", { name: /Source values for/i }) });
 
     await page.getByRole("button", { name: "Live Data" }).click();
 
@@ -43,7 +49,6 @@ test.describe("Grid Mood", () => {
     await expect(page.getByRole("cell", { name: "Location name" })).toBeVisible();
     await expect(page.getByRole("cell", { name: "Region code" })).toBeVisible();
     await expect(page.getByRole("cell", { name: "Marginal CO2" })).toBeVisible();
-    await expect(page.getByText(/Captured at:/)).toBeVisible();
-    await expect(page.getByText(/Supabase updated:/)).toBeVisible();
+    await expect(dataPanel.getByText(/Last updated:/).first()).toBeVisible();
   });
 });

@@ -247,9 +247,6 @@ export function GridMood() {
   const selectedUpdatedAt = selectedState?.updated_at
     ? new Date(selectedState.updated_at).toLocaleString()
     : "Awaiting live feed";
-  const selectedCapturedAt = selectedState?.captured_at
-    ? new Date(selectedState.captured_at).toLocaleString()
-    : "Awaiting live feed";
   const dataRows = [
     {
       field: "Location name",
@@ -294,11 +291,7 @@ export function GridMood() {
       value: selectedState?.palette_name ?? "dawn-waiting"
     },
     {
-      field: "Captured at",
-      value: selectedCapturedAt
-    },
-    {
-      field: "Supabase updated at",
+      field: "Last updated",
       value: selectedUpdatedAt
     }
   ];
@@ -500,9 +493,9 @@ export function GridMood() {
                     Palette: {selectedState?.palette_name ?? "dawn-waiting"}
                   </span>
                   <span className="rounded-full border border-white/15 px-4 py-2">
-                    Updated:{" "}
-                    {selectedState?.captured_at
-                      ? new Date(selectedState.captured_at).toLocaleTimeString()
+                    Last updated:{" "}
+                    {selectedState?.updated_at
+                      ? new Date(selectedState.updated_at).toLocaleTimeString()
                       : "pending"}
                   </span>
                   <span className="rounded-full border border-white/15 px-4 py-2">
@@ -541,8 +534,7 @@ export function GridMood() {
                 </h2>
               </div>
               <div className="text-sm text-stone-600">
-                <p>Captured at: <span className="font-medium text-stone-900">{selectedCapturedAt}</span></p>
-                <p>Supabase updated: <span className="font-medium text-stone-900">{selectedUpdatedAt}</span></p>
+                <p>Last updated: <span className="font-medium text-stone-900">{selectedUpdatedAt}</span></p>
               </div>
             </div>
 

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "watchPatterns": [
+      "/apps/worker/**",
+      "/package.json",
+      "/package-lock.json"
+    ]
+  },
+  "deploy": {
+    "startCommand": "npm run start --workspace @grid-mood/worker",
+    "restartPolicyType": "ALWAYS",
+    "sleepApplication": false
+  }
+}

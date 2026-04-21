@@ -7,6 +7,21 @@
     "dev": "node index.js",
     "start": "node index.js"
   },
+  "railway": {
+    "$schema": "https://railway.com/railway.schema.json",
+    "build": {
+      "watchPatterns": [
+        "/apps/worker/**",
+        "/package.json",
+        "/package-lock.json"
+      ]
+    },
+    "deploy": {
+      "startCommand": "npm run start --workspace @grid-mood/worker",
+      "restartPolicyType": "ALWAYS",
+      "sleepApplication": false
+    }
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4"
   }
