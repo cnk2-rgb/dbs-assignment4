@@ -453,85 +453,117 @@ export function GridMood() {
 
         {activeTab === "mood" ? (
           <div className="grid gap-5 lg:grid-cols-[1.3fr_0.9fr]">
-            <section
-              className="relative overflow-hidden rounded-[2rem] border border-[var(--panel-border)] bg-stone-950 p-8 text-stone-100"
-              style={{
-                background: scenePalette.sky
-              }}
-            >
-              <div
-                className="pointer-events-none absolute inset-0 opacity-90 transition-all duration-700"
+            <div className="grid gap-4">
+              <section className="rounded-[1.5rem] border border-[var(--panel-border)] bg-white/72 p-5 shadow-sm">
+                <p className="text-xs uppercase tracking-[0.28em] text-stone-500">
+                  Signal Index Scale
+                </p>
+                <div className="mt-4">
+                  <div
+                    aria-hidden="true"
+                    className="h-3 w-full rounded-full border border-white/20 shadow-[0_8px_24px_rgba(15,23,42,0.12)]"
+                    style={{
+                      background:
+                        "linear-gradient(90deg, rgba(120,197,255,0.96) 0%, rgba(174,229,255,0.92) 18%, rgba(255,210,120,0.9) 50%, rgba(255,150,96,0.94) 76%, rgba(210,68,58,0.96) 100%)"
+                    }}
+                  />
+                  <div className="mt-2 flex items-center justify-between gap-4 text-xs uppercase tracking-[0.2em] text-stone-700">
+                    <div className="flex flex-col">
+                      <span>Clean</span>
+                      <span className="mt-1 text-[0.65rem] tracking-[0.18em] text-stone-500">
+                        Signal Index 0
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span>Dirty</span>
+                      <span className="mt-1 block text-[0.65rem] tracking-[0.18em] text-stone-500">
+                        Signal Index 100
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section
+                className="relative overflow-hidden rounded-[2rem] border border-[var(--panel-border)] bg-stone-950 p-8 text-stone-100"
                 style={{
-                  background: `radial-gradient(circle at 24% 24%, ${scenePalette.glow}, transparent 30%), radial-gradient(circle at 72% 18%, ${scenePalette.ring}, transparent 24%), radial-gradient(circle at 58% 70%, ${scenePalette.pulse}, transparent 36%)`
+                  background: scenePalette.sky
                 }}
-              />
-              <div className="pointer-events-none absolute inset-x-[-6%] top-[14%] h-40 rounded-full bg-white/10 blur-3xl" />
-              <div
-                className="scene-orb pointer-events-none absolute left-[12%] top-[14%] h-36 w-36 rounded-full blur-[1px]"
-                style={orbStyle}
-              />
-              <div
-                className="scene-wave pointer-events-none absolute bottom-[18%] left-[-8%] h-40 w-[78%] rounded-[50%] blur-2xl"
-                style={{
-                  background: `linear-gradient(180deg, rgba(255,255,255,0.02), ${scenePalette.ring})`
-                }}
-              />
-              <div
-                className="scene-wave pointer-events-none absolute bottom-[10%] right-[-15%] h-44 w-[74%] rounded-[50%] blur-2xl"
-                style={{
-                  animationDelay: "1.2s",
-                  background: `linear-gradient(180deg, rgba(255,255,255,0.02), ${scenePalette.pulse})`
-                }}
-              />
-              {Array.from({ length: particleCount }).map((_, index) => (
-                <span
-                  key={index}
-                  className="scene-particle pointer-events-none absolute rounded-full bg-white/80"
+              >
+                <div
+                  className="pointer-events-none absolute inset-0 opacity-90 transition-all duration-700"
                   style={{
-                    left: `${12 + index * (72 / Math.max(1, particleCount - 1))}%`,
-                    top: `${18 + (index % 3) * 14}%`,
-                    width: `${4 + (index % 3)}px`,
-                    height: `${4 + (index % 3)}px`,
-                    opacity: 0.24 + (index % 4) * 0.08,
-                    animationDelay: `${index * 0.7}s`
+                    background: `radial-gradient(circle at 24% 24%, ${scenePalette.glow}, transparent 30%), radial-gradient(circle at 72% 18%, ${scenePalette.ring}, transparent 24%), radial-gradient(circle at 58% 70%, ${scenePalette.pulse}, transparent 36%)`
                   }}
                 />
-              ))}
-              <div
-                className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%]"
-                style={{
-                  background: `linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.14) 18%, ${scenePalette.ridgeSecondary} 18%, ${scenePalette.ridgeSecondary} 38%, ${scenePalette.ridge} 38%, ${scenePalette.ridge} 100%)`,
-                  clipPath:
-                    "polygon(0 72%, 12% 64%, 24% 70%, 34% 58%, 46% 63%, 58% 44%, 69% 56%, 81% 41%, 100% 58%, 100% 100%, 0 100%)"
-                }}
-              />
-              <div className="relative flex min-h-[24rem] flex-col justify-between">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.3em] text-stone-300">
-                    Live atmosphere
-                  </p>
-                  <p className="mt-4 max-w-xl text-lg leading-8 text-stone-200">
-                    The scene shifts its sky, glow, terrain, and motion from the
-                    current WattTime mood bucket and percentile. Cleaner intervals
-                    open the horizon; dirtier intervals tighten the palette and pulse.
-                  </p>
+                <div className="pointer-events-none absolute inset-x-[-6%] top-[14%] h-40 rounded-full bg-white/10 blur-3xl" />
+                <div
+                  className="scene-orb pointer-events-none absolute left-[12%] top-[14%] h-36 w-36 rounded-full blur-[1px]"
+                  style={orbStyle}
+                />
+                <div
+                  className="scene-wave pointer-events-none absolute bottom-[18%] left-[-8%] h-40 w-[78%] rounded-[50%] blur-2xl"
+                  style={{
+                    background: `linear-gradient(180deg, rgba(255,255,255,0.02), ${scenePalette.ring})`
+                  }}
+                />
+                <div
+                  className="scene-wave pointer-events-none absolute bottom-[10%] right-[-15%] h-44 w-[74%] rounded-[50%] blur-2xl"
+                  style={{
+                    animationDelay: "1.2s",
+                    background: `linear-gradient(180deg, rgba(255,255,255,0.02), ${scenePalette.pulse})`
+                  }}
+                />
+                {Array.from({ length: particleCount }).map((_, index) => (
+                  <span
+                    key={index}
+                    className="scene-particle pointer-events-none absolute rounded-full bg-white/80"
+                    style={{
+                      left: `${12 + index * (72 / Math.max(1, particleCount - 1))}%`,
+                      top: `${18 + (index % 3) * 14}%`,
+                      width: `${4 + (index % 3)}px`,
+                      height: `${4 + (index % 3)}px`,
+                      opacity: 0.24 + (index % 4) * 0.08,
+                      animationDelay: `${index * 0.7}s`
+                    }}
+                  />
+                ))}
+                <div
+                  className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%]"
+                  style={{
+                    background: `linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.14) 18%, ${scenePalette.ridgeSecondary} 18%, ${scenePalette.ridgeSecondary} 38%, ${scenePalette.ridge} 38%, ${scenePalette.ridge} 100%)`,
+                    clipPath:
+                      "polygon(0 72%, 12% 64%, 24% 70%, 34% 58%, 46% 63%, 58% 44%, 69% 56%, 81% 41%, 100% 58%, 100% 100%, 0 100%)"
+                  }}
+                />
+                <div className="relative flex min-h-[24rem] flex-col justify-between">
+                  <div>
+                    <p className="text-sm uppercase tracking-[0.3em] text-stone-300">
+                      Live atmosphere
+                    </p>
+                    <p className="mt-4 max-w-xl text-lg leading-8 text-stone-200">
+                      The scene shifts its sky, glow, terrain, and motion from the
+                      current WattTime mood bucket and percentile. Cleaner intervals
+                      open the horizon; dirtier intervals tighten the palette and pulse.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-3 text-sm text-stone-300">
+                    <span className="rounded-full border border-white/15 px-4 py-2">
+                      Palette: {selectedState?.palette_name ?? "dawn-waiting"}
+                    </span>
+                    <span className="rounded-full border border-white/15 px-4 py-2">
+                      Last updated:{" "}
+                      {selectedState?.updated_at
+                        ? new Date(selectedState.updated_at).toLocaleTimeString()
+                        : "pending"}
+                    </span>
+                    <span className="rounded-full border border-white/15 px-4 py-2">
+                      Current MOER: {formatNumber(selectedState?.co2_moer ?? null, "lbs/MWh")}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-3 text-sm text-stone-300">
-                  <span className="rounded-full border border-white/15 px-4 py-2">
-                    Palette: {selectedState?.palette_name ?? "dawn-waiting"}
-                  </span>
-                  <span className="rounded-full border border-white/15 px-4 py-2">
-                    Last updated:{" "}
-                    {selectedState?.updated_at
-                      ? new Date(selectedState.updated_at).toLocaleTimeString()
-                      : "pending"}
-                  </span>
-                  <span className="rounded-full border border-white/15 px-4 py-2">
-                    Current MOER: {formatNumber(selectedState?.co2_moer ?? null, "lbs/MWh")}
-                  </span>
-                </div>
-              </div>
-            </section>
+              </section>
+            </div>
 
             <section className="grid gap-4">
               {metrics.map((metric) => (
