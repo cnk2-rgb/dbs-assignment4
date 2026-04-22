@@ -6,10 +6,10 @@ test.describe("Grid Mood", () => {
 
     await expect(
       page.getByRole("heading", {
-        name: "A live sky shaped by the carbon mood of the grid."
+        name: "A live sky shaped by the carbon emissions of the grid."
       })
     ).toBeVisible();
-    await expect(page.getByText("Grid Percentile", { exact: true })).toBeVisible();
+    await expect(page.getByText("Signal Index", { exact: true })).toBeVisible();
     await expect(page.getByText("Marginal CO2", { exact: true })).toBeVisible();
     await expect(page.getByText("Region", { exact: true })).toBeVisible();
   });

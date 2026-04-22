@@ -1,6 +1,8 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 const isPublicRoute = createRouteMatcher([
+  "/",
+  "/api/live-location",
   "/sign-in(.*)",
   "/sign-up(.*)"
 ]);
