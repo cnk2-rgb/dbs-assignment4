@@ -44,11 +44,11 @@ function formatPercentile(value: number | null) {
 function describeMood(moodLevel: string) {
   switch (moodLevel) {
     case "calm":
-      return "Low-emissions conditions should feel spacious, pale, and quiet.";
+      return "Low-emissions conditions are represented with spacious, pale, and quiet UI.";
     case "active":
-      return "Midrange grid conditions should feel warmer and more kinetic.";
+      return "Midrange grid conditions are represented with warmer and more kinetic imagery.";
     case "tense":
-      return "Higher-emissions conditions should compress the scene and raise visual stress.";
+      return "Higher-emissions conditions compress the scene and raise visual stress.";
     default:
       return "Waiting for a live WattTime snapshot to establish the atmosphere.";
   }
@@ -108,6 +108,7 @@ export function GridMood() {
   >({});
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"mood" | "data">("mood");
+  const [isSignalIndexInfoOpen, setIsSignalIndexInfoOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -209,9 +210,10 @@ export function GridMood() {
 
   const metrics = [
     {
-      label: "Grid Percentile",
+      label: "Signal Index",
       value: formatPercentile(selectedState?.emissions_percentile ?? null),
-      description: "Relative dirtiness of the current grid compared with the past month."
+      description:
+        "Statistical percentile of the current MOER (Marginal Operating Emissions Rate) relative to the upcoming 24 hours of forecast MOER values (100=dirtiest, 0=cleanest). If the index is high, users should delay flexible energy use to cleaner times later in the day."
     },
     {
       label: "Marginal CO2",
@@ -243,6 +245,18 @@ export function GridMood() {
     background: `radial-gradient(circle at 32% 32%, rgba(255,255,255,0.92), ${scenePalette.orb} 48%, rgba(255,255,255,0) 78%)`,
     boxShadow: `0 0 110px ${scenePalette.glow}`,
     "--scene-orb-scale": String(orbScale)
+  };
+  const pageBackgroundStyle: CSSProperties = {
+    background: `
+      radial-gradient(circle at 18% 16%, ${scenePalette.glow}, transparent 32%),
+      radial-gradient(circle at 82% 20%, ${scenePalette.pulse}, transparent 26%),
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, #f7f1e7 ${Math.max(18, 42 - intensity * 18)}%, ${scenePalette.orb}) 0%,
+        color-mix(in srgb, #e4ddd2 ${Math.max(16, 40 - intensity * 15)}%, ${scenePalette.ring}) 44%,
+        color-mix(in srgb, #c8d3da ${Math.max(14, 34 - intensity * 10)}%, ${scenePalette.orb}) 100%
+      )
+    `
   };
   const selectedUpdatedAt = selectedState?.updated_at
     ? new Date(selectedState.updated_at).toLocaleString()
@@ -297,7 +311,10 @@ export function GridMood() {
   ];
 
   return (
-    <main className="min-h-screen px-6 py-8 text-stone-950 md:px-10 lg:px-14">
+    <main
+      className="min-h-screen px-6 py-8 text-stone-950 transition-[background] duration-700 md:px-10 lg:px-14"
+      style={pageBackgroundStyle}
+    >
       <section className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-7xl flex-col justify-between gap-10 rounded-[2rem] border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-[0_18px_80px_rgba(30,45,62,0.12)] backdrop-blur md:p-10">
         <div className="flex flex-col gap-12 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
@@ -305,14 +322,25 @@ export function GridMood() {
               Grid Mood
             </p>
             <h1 className="mt-4 max-w-3xl text-5xl leading-none tracking-[-0.04em] text-stone-950 md:text-7xl">
-              A live sky shaped by the carbon mood of the grid.
+              A live sky shaped by the carbon emissions of the grid.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-stone-700 md:text-xl">
-              WattTime drives the live state. The Railway worker resolves each
-              location&apos;s balancing authority, writes the latest emissions
-              percentile and marginal signal to Supabase, and this page subscribes
-              through Realtime.
+              Explore live carbon emission metrics from various locations to make more eco-friendly energy usage decisions.
             </p>
+            <div className="mt-6 flex flex-wrap items-center gap-4">
+              <p className="max-w-xl text-sm leading-6 text-stone-600">
+                Explore our data source and its use cases in WattTime&apos;s signal
+                documentation.
+              </p>
+              <a
+                href="https://watttime.org/data-science/data-signals/"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-900 shadow-sm transition hover:border-stone-500 hover:bg-stone-100"
+              >
+                Learn More
+              </a>
+            </div>
           </div>
 
           <aside className="w-full max-w-sm rounded-[1.75rem] border border-[var(--panel-border)] bg-white/70 p-5 shadow-sm">
@@ -509,11 +537,57 @@ export function GridMood() {
               {metrics.map((metric) => (
                 <article
                   key={metric.label}
-                  className="rounded-[1.5rem] border border-[var(--panel-border)] bg-white/75 p-5"
+                  className="relative rounded-[1.5rem] border border-[var(--panel-border)] bg-white/75 p-5"
                 >
-                  <p className="text-xs uppercase tracking-[0.28em] text-stone-500">
-                    {metric.label}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs uppercase tracking-[0.28em] text-stone-500">
+                      {metric.label}
+                    </p>
+                    {metric.label === "Signal Index" ? (
+                      <div className="relative">
+                        <button
+                          type="button"
+                          aria-expanded={isSignalIndexInfoOpen}
+                          aria-label="Explain the signal index"
+                          onClick={() => setIsSignalIndexInfoOpen((current) => !current)}
+                          className="flex h-6 w-6 items-center justify-center rounded-full border border-stone-300 bg-white text-xs font-medium text-stone-600 transition hover:border-stone-500 hover:text-stone-900"
+                        >
+                          i
+                        </button>
+                        {isSignalIndexInfoOpen ? (
+                          <div className="absolute left-0 top-9 z-20 w-[min(26rem,calc(100vw-5rem))] rounded-[1.25rem] border border-stone-200 bg-stone-950 p-4 text-sm leading-6 text-stone-100 shadow-[0_18px_50px_rgba(16,20,24,0.26)]">
+                            <p>
+                              In WattTime v3, the signal index is defined as a 0-100
+                              percentile of the current <code>co2_moer</code>{" "}
+                              relative to the upcoming 24 hours for that region. The Marginal Operating Emissions Rate (MOER) represents the emissions rate of the electricity generator(s) that are responding to changes in load on the local grid at a certain time. The MOER includes the effects of renewable curtailment and import/export between grid regions. The units of MOER are the amount of pollution per unit of energy (lbs/MWh).
+                            </p>
+                            <p className="mt-4">
+                              That makes it useful for three reasons:
+                            </p>
+                            <ul className="mt-3 space-y-2 text-stone-200">
+                              <li>
+                                It supports timing decisions. If the index is
+                                high now, you likely should delay flexible usage
+                                because cleaner intervals are expected later
+                                within the next day.
+                              </li>
+                              <li>
+                                It simplifies UX. &ldquo;Dirty now, cleaner
+                                later&rdquo; is easier to explain than raw
+                                lbs/MWh.
+                              </li>
+                              <li>
+                                It is locally contextual. Different grids have
+                                very different absolute MOER ranges, so a
+                                percentile is often more meaningful than
+                                comparing raw values across places.
+                              </li>
+                            </ul>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
                   <p className="mt-3 text-2xl text-stone-950">{metric.value}</p>
                   <p className="mt-3 text-sm leading-6 text-stone-600">
                     {metric.description}
