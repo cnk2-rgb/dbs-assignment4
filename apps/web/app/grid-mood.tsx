@@ -297,14 +297,6 @@ export function GridMood() {
       value: formatNumber(selectedState?.co2_moer ?? null, "lbs/MWh")
     },
     {
-      field: "Mood level",
-      value: selectedState?.mood_level ?? "unknown"
-    },
-    {
-      field: "Palette",
-      value: selectedState?.palette_name ?? "dawn-waiting"
-    },
-    {
       field: "Last updated",
       value: selectedUpdatedAt
     }
@@ -541,23 +533,18 @@ export function GridMood() {
                     <p className="text-sm uppercase tracking-[0.3em] text-stone-300">
                       Live atmosphere
                     </p>
-                    <p className="mt-4 max-w-xl text-lg leading-8 text-stone-200">
-                      The scene shifts its sky, glow, terrain, and motion from the
-                      current WattTime mood bucket and percentile. Cleaner intervals
-                      open the horizon; dirtier intervals tighten the palette and pulse.
-                    </p>
                   </div>
-                  <div className="flex flex-wrap gap-3 text-sm text-stone-300">
-                    <span className="rounded-full border border-white/15 px-4 py-2">
+                  <div className="flex flex-wrap gap-3 text-sm text-stone-100">
+                    <span className="rounded-full border border-white/20 bg-white/10 px-4 py-2 shadow-[0_10px_24px_rgba(0,0,0,0.18)] backdrop-blur-sm">
                       Palette: {selectedState?.palette_name ?? "dawn-waiting"}
                     </span>
-                    <span className="rounded-full border border-white/15 px-4 py-2">
+                    <span className="rounded-full border border-white/20 bg-white/10 px-4 py-2 shadow-[0_10px_24px_rgba(0,0,0,0.18)] backdrop-blur-sm">
                       Last updated:{" "}
                       {selectedState?.updated_at
                         ? new Date(selectedState.updated_at).toLocaleTimeString()
                         : "pending"}
                     </span>
-                    <span className="rounded-full border border-white/15 px-4 py-2">
+                    <span className="rounded-full border border-white/20 bg-white/10 px-4 py-2 shadow-[0_10px_24px_rgba(0,0,0,0.18)] backdrop-blur-sm">
                       Current MOER: {formatNumber(selectedState?.co2_moer ?? null, "lbs/MWh")}
                     </span>
                   </div>
