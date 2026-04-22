@@ -20,6 +20,18 @@ create table if not exists public.current_grid_state (
   updated_at timestamptz not null default now()
 );
 
+insert into public.locations (name, latitude, longitude)
+select seed.name, seed.latitude, seed.longitude
+from (
+  values
+    ('Chicago, IL', 41.8781, -87.6298)
+) as seed(name, latitude, longitude)
+where not exists (
+  select 1
+  from public.locations existing
+  where lower(existing.name) = lower(seed.name)
+);
+
 alter table public.locations enable row level security;
 alter table public.current_grid_state enable row level security;
 

@@ -9,6 +9,7 @@ type LocationRecord = {
   name: string;
   latitude: number;
   longitude: number;
+  source?: "supabase" | "browser";
 };
 
 type CurrentGridState = {
@@ -101,15 +102,170 @@ function getScenePalette(moodLevel: string) {
   }
 }
 
+function mergeDisplayLocations(storedLocations: LocationRecord[]) {
+  const hiddenLocationNames = new Set([
+    "sacramento, ca",
+    "new york, ny",
+    "your live location"
+  ]);
+
+  return storedLocations
+    .filter(
+      (location) =>
+        location.source !== "browser" &&
+        !hiddenLocationNames.has(location.name.trim().toLowerCase())
+    )
+    .map((location) => ({
+      ...location,
+      source: location.source ?? "supabase"
+    }));
+}
+
+function describeGeolocationError(code?: number) {
+  switch (code) {
+    case 1:
+      return "Location permission was denied.";
+    case 2:
+      return "Your location could not be determined.";
+    case 3:
+      return "Location request timed out.";
+    default:
+      return "Unable to retrieve your live location.";
+  }
+}
+
 export function GridMood() {
   const [locations, setLocations] = useState<LocationRecord[]>([]);
   const [statesByLocationId, setStatesByLocationId] = useState<
     Record<number, CurrentGridState>
   >({});
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
+  const [loadingLocationId, setLoadingLocationId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"mood" | "data">("mood");
   const [isSignalIndexInfoOpen, setIsSignalIndexInfoOpen] = useState(false);
+  const [geolocationStatus, setGeolocationStatus] = useState<
+    "idle" | "requesting" | "ready" | "error" | "unsupported"
+  >("idle");
+  const [geolocationError, setGeolocationError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  async function hydrateLocation(location: LocationRecord) {
+    const response = await fetch("/api/live-location", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        name: location.name,
+        latitude: location.latitude,
+        longitude: location.longitude
+      })
+    });
+
+    const payload = (await response.json()) as
+      | {
+          error?: string;
+          location: LocationRecord;
+          state: CurrentGridState;
+        }
+      | { error?: string };
+
+    if (!response.ok || !("location" in payload) || !("state" in payload)) {
+      throw new Error(
+        payload.error ?? `Failed to load an initial WattTime snapshot for ${location.name}.`
+      );
+    }
+
+    const nextLocation = {
+      ...payload.location,
+      source: location.source === "browser" ? "browser" : "supabase"
+    } satisfies LocationRecord;
+
+    setLocations((current) => {
+      const withoutExisting = current.filter(
+        (currentLocation) => currentLocation.id !== nextLocation.id
+      );
+
+      return [...withoutExisting, nextLocation];
+    });
+    setStatesByLocationId((current) => ({
+      ...current,
+      [payload.state.location_id]: payload.state
+    }));
+
+    return payload.location.id;
+  }
+
+  async function handleLocationSelection(location: LocationRecord) {
+    if (statesByLocationId[location.id] || location.source === "supabase") {
+      setSelectedLocationId(location.id);
+      return;
+    }
+
+    setLoadingLocationId(location.id);
+    setError(null);
+
+    try {
+      const hydratedLocationId = await hydrateLocation(location);
+      setSelectedLocationId(hydratedLocationId);
+    } catch (selectionError) {
+      setError(
+        selectionError instanceof Error
+          ? selectionError.message
+          : `Failed to load ${location.name}.`
+      );
+    } finally {
+      setLoadingLocationId(null);
+    }
+  }
+
+  function requestBrowserLocation() {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setGeolocationStatus("unsupported");
+      setGeolocationError("This browser does not support live location requests.");
+      return;
+    }
+
+    setGeolocationStatus("requesting");
+    setGeolocationError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        const latitude = Number(coords.latitude.toFixed(4));
+        const longitude = Number(coords.longitude.toFixed(4));
+        const browserLocation: LocationRecord = {
+          id: 0,
+          name: "Your live location",
+          latitude,
+          longitude,
+          source: "browser"
+        };
+
+        try {
+          const hydratedLocationId = await hydrateLocation(browserLocation);
+          setGeolocationStatus("ready");
+          setGeolocationError(null);
+          setSelectedLocationId(hydratedLocationId);
+        } catch (requestError) {
+          setGeolocationStatus("error");
+          setGeolocationError(
+            requestError instanceof Error
+              ? requestError.message
+              : "Unable to load your live location."
+          );
+        }
+      },
+      (positionError) => {
+        setGeolocationStatus("error");
+        setGeolocationError(describeGeolocationError(positionError.code));
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 10000,
+        maximumAge: 300000
+      }
+    );
+  }
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
@@ -192,21 +348,32 @@ export function GridMood() {
     };
   }, []);
 
+  const displayLocations = useMemo(() => mergeDisplayLocations(locations), [locations]);
+  const browserLocation = useMemo(
+    () => locations.find((location) => location.source === "browser") ?? null,
+    [locations]
+  );
   const selectedLocation =
     locations.find((location) => location.id === selectedLocationId) ?? null;
   const selectedState =
     (selectedLocationId !== null ? statesByLocationId[selectedLocationId] : null) ?? null;
   const moerEnabledLocation = useMemo(
     () =>
-      locations.find((location) => {
+      displayLocations.find((location) => {
         const state = statesByLocationId[location.id];
         return state?.co2_moer !== null && state?.co2_moer !== undefined;
       }) ?? null,
-    [locations, statesByLocationId]
+    [displayLocations, statesByLocationId]
   );
   const showChicagoAccessMessage =
     selectedLocation?.name === "Chicago, IL" &&
     (selectedState?.co2_moer === null || selectedState?.co2_moer === undefined);
+  const missingLiveSnapshot =
+    selectedLocationId !== null &&
+    selectedLocation !== null &&
+    statesByLocationId[selectedLocationId] === undefined;
+  const locationNotice =
+    geolocationError;
 
   const metrics = [
     {
@@ -355,29 +522,68 @@ export function GridMood() {
               <div>
                 <p className="text-sm text-stone-500">Available places</p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {locations.map((location) => {
-                    const hasMoer =
-                      statesByLocationId[location.id]?.co2_moer !== null &&
-                      statesByLocationId[location.id]?.co2_moer !== undefined;
-
+                  {displayLocations.map((location) => {
                     return (
                       <button
                         key={location.id}
                         type="button"
-                        onClick={() => setSelectedLocationId(location.id)}
+                        onClick={() => void handleLocationSelection(location)}
+                        disabled={loadingLocationId === location.id}
                         className={`rounded-full border px-3 py-2 text-sm transition ${
                           location.id === selectedLocationId
                             ? "border-stone-900 bg-stone-900 text-white"
                             : "border-stone-300 bg-white text-stone-700 hover:border-stone-500"
-                        }`}
+                        } disabled:cursor-wait disabled:opacity-60`}
                       >
-                        {location.name}
-                        {hasMoer ? " • MOER" : ""}
+                        {loadingLocationId === location.id ? "Loading..." : location.name}
                       </button>
                     );
                   })}
+                  {browserLocation ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => void handleLocationSelection(browserLocation)}
+                        disabled={
+                          geolocationStatus === "requesting" ||
+                          loadingLocationId === browserLocation.id
+                        }
+                        className={`rounded-full border px-3 py-2 text-sm transition ${
+                          browserLocation.id === selectedLocationId
+                            ? "border-stone-900 bg-stone-900 text-white"
+                            : "border-stone-300 bg-white text-stone-700 hover:border-stone-500"
+                        } disabled:cursor-wait disabled:opacity-60`}
+                      >
+                        {loadingLocationId === browserLocation.id ? "Loading..." : "My location"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={requestBrowserLocation}
+                        disabled={geolocationStatus === "requesting"}
+                        className="rounded-full border border-dashed border-stone-400 bg-transparent px-3 py-2 text-sm text-stone-700 transition hover:border-stone-700 disabled:cursor-wait disabled:opacity-60"
+                      >
+                        {geolocationStatus === "requesting"
+                          ? "Locating..."
+                          : "Refresh my location"}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={requestBrowserLocation}
+                      disabled={geolocationStatus === "requesting"}
+                      className="rounded-full border border-dashed border-stone-400 bg-transparent px-3 py-2 text-sm text-stone-700 transition hover:border-stone-700 disabled:cursor-wait disabled:opacity-60"
+                    >
+                      {geolocationStatus === "requesting" ? "Locating..." : "Use my location"}
+                    </button>
+                  )}
                 </div>
               </div>
+              {locationNotice ? (
+                <div className="rounded-2xl bg-stone-100 px-4 py-3 text-sm text-stone-700">
+                  {locationNotice}
+                </div>
+              ) : null}
               {error ? (
                 <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">
                   {error}
